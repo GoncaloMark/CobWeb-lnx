@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "cobweb"
+version = "0.1.0"
+description = ""
+authors = ["GoncaloMark <gmgoncalo7@gmail.com>"]
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.28.1"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
