@@ -10,8 +10,8 @@ class Spider:
         self.__config = config
 
         #These are instance sets because every link will be unique, internal links link to another inside page, external links link to another different website!
-        internal_urls = set()
-        external_urls = set()
+        self.internal_urls = set()
+        self.external_urls = set()
 
         isValid = self.__validateURL()
         if isValid is False:
@@ -26,5 +26,33 @@ class Spider:
         return bool(parsed.netloc) and bool(parsed.scheme)
 
     def getLinks(self):
-        pass
+        page = requests.get(self.__url)
+        domain_name = urlparse(self.__url).netloc
+        soup = BeautifulSoup(page.content, "html.parser")
+
+        for link_tag in soup.find_all("a"): #Find all <a/> html tags and get their href attribute
+            href = link_tag.attrs.get("href") 
+
+            if href == "" or href == None: #If there's no href return control to the beginning 
+                continue
+
+            href = urljoin(self.__url, href) #Join in case of relative paths!
+
+            parse_href = urlparse(href) #Get the parts of the URL
+
+            href = parse_href.scheme + "://" + parse_href.netloc + parse_href.path #Even if it was an absolute path and we accidentally joined it above this ensures all we get is an URL of this type!
+
+            if not self.__validateURL(href):
+                continue #If it's invalid return control to the beginning 
+
+            if domain_name not in href: #Here we check if it's external link first, if it's not we can check if it's already in internal links and add it!
+                if href not in self.external_urls:
+                    self.external_urls.add(href)
+                continue
+            elif href not in self.internal_urls:
+                self.internal_urls.add(href)
+                continue
+
+    def showLinks(self):
+        return (self.internal_urls, self.external_urls)
 
