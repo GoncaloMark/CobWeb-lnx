@@ -1,13 +1,15 @@
 import requests
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
+import pathlib
+import yaml
 
 class Spider:
-    def __init__(self, url, config):
+    def __init__(self, url, config_file):
         #Spider initializes instance with an url and a config, the config for the spider will only tell if you want internal links, external links or both!
 
         self.__url = url
-        self.__config = config
+        self.__config = self.__config_parser(config_file=config_file)
 
         #These are instance sets because every link will be unique, internal links link to another inside page, external links link to another different website!
         self.internal_urls = set()
@@ -55,4 +57,24 @@ class Spider:
 
     def showLinks(self):
         return (self.internal_urls, self.external_urls)
+
+    def __config_parser(self, config_file):
+        file_extension = pathlib.Path('config_file').suffix
+
+        if file_extension == "yml" or file_extension == "yaml":
+            config = self.__parse_yaml(config_file=config_file)
+            return config
+        else:
+            raise ValueError
+
+    def __parse_yaml(self, config_file):
+        
+        try:
+            with open(config_file, 'r') as stream:
+                data = yaml.safe_load(stream)
+                return data
+        except yaml.YAMLError as e:
+            print(f"ERROR {e}")
+            raise ValueError
+
 
