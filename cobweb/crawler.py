@@ -94,7 +94,8 @@ class Scraper(Spider):
 
 
 if __name__ == "__main__":
-    Crawl = Spider("https://www.imdb.com/")
+    website_url = ""
+    Crawl = Spider(url=website_url)
     Crawl.getLinks()
     print(Crawl.showLinks())
     
