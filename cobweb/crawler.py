@@ -4,41 +4,40 @@ from bs4 import BeautifulSoup
 import pathlib
 import yaml
 
+#self.__config = self.__config_parser(config_file=config_file)
+#, config_file
+
 class Spider:
-    def __init__(self, url, config_file):
+    def __init__(self, url, max_hops = 10):
         #Spider initializes instance with an url and a config, the config for the spider will only tell if you want internal links, external links or both!
 
-        self.__url = url
-        self.__config = self.__config_parser(config_file=config_file)
-
+        self.hops = int(max_hops)
+        self._url = url
+        
         #These are instance sets because every link will be unique, internal links link to another inside page, external links link to another different website!
-        self.internal_urls = set()
-        self.external_urls = set()
+        self._internal_urls = set()
+        self._external_urls = set()
 
-        isValid = self.__validateURL()
+        isValid = self.__validateURL(self._url)
         if isValid is False:
             raise ValueError
 
-    def __del__(self):
-        print(f"Invalid URL {self.__url}")
-
-
-    def __validateURL(self):
-        parsed = urlparse(self.__url)
+    def __validateURL(self, url):
+        parsed = urlparse(url)
         return bool(parsed.netloc) and bool(parsed.scheme)
 
     def getLinks(self):
-        page = requests.get(self.__url)
-        domain_name = urlparse(self.__url).netloc
+        page = requests.get(self._url)
+        domain_name = urlparse(self._url).netloc
         soup = BeautifulSoup(page.content, "html.parser")
 
-        for link_tag in soup.find_all("a"): #Find all <a/> html tags and get their href attribute
+        for link_tag in soup.find_all("a")[0:self.hops]: #Find all <a/> html tags and get their href attribute
             href = link_tag.attrs.get("href") 
 
             if href == "" or href == None: #If there's no href return control to the beginning 
                 continue
 
-            href = urljoin(self.__url, href) #Join in case of relative paths!
+            href = urljoin(self._url, href) #Join in case of relative paths!
 
             parse_href = urlparse(href) #Get the parts of the URL
 
@@ -48,15 +47,32 @@ class Spider:
                 continue #If it's invalid return control to the beginning 
 
             if domain_name not in href: #Here we check if it's external link first, if it's not we can check if it's already in internal links and add it!
-                if href not in self.external_urls:
-                    self.external_urls.add(href)
+                if href not in self._external_urls:
+                    self._external_urls.add(href)
                 continue
-            elif href not in self.internal_urls:
-                self.internal_urls.add(href)
+            elif href not in self._internal_urls:
+                self._internal_urls.add(href)
                 continue
 
     def showLinks(self):
-        return (self.internal_urls, self.external_urls)
+        if self._internal_urls and self._external_urls:
+            return (self._internal_urls, self._external_urls)
+        elif self._internal_urls:
+            return self._internal_urls
+        elif self._external_urls:
+            return self._external_urls
+
+
+class Scraper(Spider):
+
+    def __init__(self, url, max_hops, config):
+        super().__init__(url, max_hops)
+
+        self.__config = self.__config_parser(config)
+        self.__links = self.getLinks()
+
+    def scrape(self):
+        pass
 
     def __config_parser(self, config_file):
         file_extension = pathlib.Path('config_file').suffix
@@ -74,7 +90,11 @@ class Spider:
                 data = yaml.safe_load(stream)
                 return data
         except yaml.YAMLError as e:
-            print(f"ERROR {e}")
-            raise ValueError
+            raise e
 
 
+if __name__ == "__main__":
+    Crawl = Spider("https://www.imdb.com/")
+    Crawl.getLinks()
+    print(Crawl.showLinks())
+    
