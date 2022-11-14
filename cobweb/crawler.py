@@ -41,7 +41,7 @@ class Spider:
 
             parse_href = urlparse(href) #Get the parts of the URL
 
-            href = parse_href.scheme + "://" + parse_href.netloc + parse_href.path #Even if it was an absolute path and we accidentally joined it above this ensures all we get is an URL of this type!
+            href = parse_href.scheme + "://" + parse_href.netloc + parse_href.path
 
             if not self.__validateURL(href):
                 continue #If it's invalid return control to the beginning 
@@ -61,6 +61,14 @@ class Spider:
             return self._internal_urls
         elif self._external_urls:
             return self._external_urls
+
+    def __str__(self):
+        return f"Spider Object with URL: {self._url} and Hops: {self.hops}"
+    
+    def __repr__(self):
+        return f"Spider(url={self._url}, max_hops={self.hops})"
+        
+        
 
 
 class Scraper(Spider):
@@ -88,9 +96,16 @@ class Scraper(Spider):
         try:
             with open(config_file, 'r') as stream:
                 data = yaml.safe_load(stream)
+                stream.close()
                 return data
         except yaml.YAMLError as e:
             raise e
+
+    def __str__(self):
+        return f"Scraper Object with URL: {self._url} and Hops: {self.hops} and Config:{self.__config}"
+    
+    def __repr__(self):
+        return f"Scraper(url={self._url}, max_hops={self.hops}, config={self.__config})"
 
 
 if __name__ == "__main__":
