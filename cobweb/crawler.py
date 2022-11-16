@@ -68,8 +68,6 @@ class Spider:
     def __repr__(self):
         return f"Spider(url={self._url}, max_hops={self.hops})"
         
-        
-
 
 class Scraper(Spider):
 
@@ -79,8 +77,31 @@ class Scraper(Spider):
         self.__config = self.__config_parser(config)
         self.__links = self.getLinks()
 
-    def scrape(self):
+    def scrapeByElem(self):
+        buffer = []
+        for link in self.__links:
+            page = requests.get(link)
+            soup = BeautifulSoup(page.content, "html.parser")
+            for tag in self.__config["tags"]:
+                buffer.append(soup.find_all(tag))
+
+        return buffer
+
+    def scrapeBySelector(self):
+        buffer = []
+        for link in self.__links:
+            page = requests.get(link)
+            soup = BeautifulSoup(page.content, "html.parser")
+            for selector in self.__config["selectors"]:
+                if selector == "id":
+                    for value in self.__config["IDvalue"]:
+                        buffer.append(soup.select("#"+value))
+
+        return buffer
+
+    def scrapeByClassName(self):
         pass
+
 
     def __config_parser(self, config_file):
         file_extension = pathlib.Path('config_file').suffix
