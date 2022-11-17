@@ -76,6 +76,7 @@ class Scraper(Spider):
 
         self.__config = self.__config_parser(config)
         self.__links = self.getLinks()
+        self.__results = set()
 
     def scrapeByElem(self):
         buffer = []
@@ -83,9 +84,8 @@ class Scraper(Spider):
             page = requests.get(link)
             soup = BeautifulSoup(page.content, "html.parser")
             for tag in self.__config["tags"]:
-                buffer.append(soup.find_all(tag))
-
-        return buffer
+                result = soup.find_all(tag)
+                self.__results.add(result)
 
     def scrapeBySelector(self):
         buffer = []
@@ -95,13 +95,30 @@ class Scraper(Spider):
             for selector in self.__config["selectors"]:
                 if selector == "id":
                     for value in self.__config["IDvalue"]:
-                        buffer.append(soup.select("#"+value))
-
-        return buffer
+                        result = soup.select("#"+value)
+                        self.__results.add(result)
 
     def scrapeByClassName(self):
-        pass
+        for link in self.__links:
+            page = requests.get(link)
+            soup = BeautifulSoup(page.content, "html.parser")
+            for tag in self.__config["tags"]:
+                for clsName in self.__config["classes"]:
+                    result = soup.find_all(tag, class_=str(clsName))
+                    self.__results.add(result)
 
+    def scrapeByAttr(self):
+        for link in self.__links:
+            page = requests.get(link)
+            soup = BeautifulSoup(page.content, "html.parser")
+            for tag in self.__config["tags"]:
+                for attrName in self.__config["attributes"]:
+                    for value in self.__config["attrV"]:
+                        result = soup.find_all(tag, attrs={attrName:value})
+                        self.__results.add(result)
+
+    def getResults(self):
+        return self.__results
 
     def __config_parser(self, config_file):
         file_extension = pathlib.Path('config_file').suffix
