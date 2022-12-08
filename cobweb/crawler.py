@@ -74,10 +74,12 @@ class Spider:
 class Scraper(Spider):
 
     def __init__(self, config):
-        super().__init__(config["url"], config["max_hops"])
+        super().__init__(config["url"], config["hops"])
 
         self.__config = config
-        self.__links = self.getLinks()
+        self.getLinks()
+        self.__links = self.showLinks()
+        print(self.showLinks())
         self.__results = set()
 
     def scrapeByElem(self):
@@ -86,7 +88,8 @@ class Scraper(Spider):
             soup = BeautifulSoup(page.content, "html.parser")
             for tag in self.__config["tags"]:
                 result = soup.find_all(tag)
-                self.__results.add(result)
+                for el in result:
+                    self.__results.add(el)
 
     def scrapeBySelector(self):
         for link in self.__links:
@@ -96,7 +99,8 @@ class Scraper(Spider):
                 if selector == "id":
                     for value in self.__config["IDvalue"]:
                         result = soup.select("#"+value)
-                        self.__results.add(result)
+                        for el in result:
+                            self.__results.add(el)
 
     def scrapeByClassName(self):
         for link in self.__links:
@@ -106,6 +110,8 @@ class Scraper(Spider):
                 for clsName in self.__config["classes"]:
                     result = soup.find_all(tag, class_=str(clsName))
                     self.__results.add(result)
+                    for el in result:
+                        self.__results.add(el)
 
     def scrapeByAttr(self):
         for link in self.__links:
@@ -116,6 +122,12 @@ class Scraper(Spider):
                     for value in self.__config["attrV"]:
                         result = soup.find_all(tag, attrs={attrName:value})
                         self.__results.add(result)
+                        for el in result:
+                            self.__results.add(el)
+
+    def scrape(self):
+        #PARSE THE CONFIG AND CHOOSE WHAT SCRAPING METHODS TO CALL!
+        pass
 
     def getResults(self):
         return self.__results
@@ -127,8 +139,6 @@ class Scraper(Spider):
         return f"Scraper(url={self._url}, max_hops={self.hops}, config={self.__config})"
     
 def config_parser(config_file):
-    file_extension = pathlib.Path('config_file').suffix
-    if file_extension == "yml" or file_extension == "yaml":
         try:
             with open(config_file, 'r') as stream:
                 data = yaml.safe_load(stream)
@@ -136,23 +146,27 @@ def config_parser(config_file):
                 return data
         except yaml.YAMLError as e:
             raise e
-    else:
-        raise ValueError
 
 if __name__ == "__main__":
-    """ 
-    SCRAPER TEST!
-    config_path = input("Specify config file (YAML) Path!")
+    
+    """ SCRAPER TEST! 
+    print("Specify config file (YAML) Path!")
+    config_path = input()
     if path.exists(config_path) == True:
         config = config_parser(config_file=config_path)
         scrape = Scraper(config=config)
         scrape.getLinks()
-        print(scrape.showLinks())
+        #print(scrape.showLinks())
+        scrape.scrapeByElem()
+        print(scrape.getResults())
+        
+
     else:
-        raise ValueError """
+        raise ValueError
+        """
 
     """ 
     SPIDER TEST!
-    crawl = Spider("https://realpython.com/pytest-python-testing/#less-boilerplate", 10)
+    crawl = Spider("url", 10)
     crawl.getLinks()
     print(crawl.showLinks()) """
