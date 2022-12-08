@@ -31,6 +31,7 @@ class Spider:
         page = requests.get(self._url)
         domain_name = urlparse(self._url).netloc
         soup = BeautifulSoup(page.content, "html.parser")
+        #IF 403 FORBIDDEN MAKE ERROR EXCEPTION!
 
         for link_tag in soup.find_all("a")[0:self.hops]: #Find all <a/> html tags and get their href attribute
             href = link_tag.attrs.get("href") 
@@ -139,6 +140,8 @@ def config_parser(config_file):
         raise ValueError
 
 if __name__ == "__main__":
+    """ 
+    SCRAPER TEST!
     config_path = input("Specify config file (YAML) Path!")
     if path.exists(config_path) == True:
         config = config_parser(config_file=config_path)
@@ -146,4 +149,10 @@ if __name__ == "__main__":
         scrape.getLinks()
         print(scrape.showLinks())
     else:
-        raise ValueError
+        raise ValueError """
+
+    """ 
+    SPIDER TEST!
+    crawl = Spider("https://realpython.com/pytest-python-testing/#less-boilerplate", 10)
+    crawl.getLinks()
+    print(crawl.showLinks()) """
