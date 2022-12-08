@@ -3,6 +3,7 @@ from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
 import pathlib
 import yaml
+from os import path
 
 #self.__config = self.__config_parser(config_file=config_file)
 #, config_file
@@ -34,7 +35,7 @@ class Spider:
         for link_tag in soup.find_all("a")[0:self.hops]: #Find all <a/> html tags and get their href attribute
             href = link_tag.attrs.get("href") 
 
-            if href == "" or href == None: #If there's no href return control to the beginning 
+            if href == "" or href == None: #If there's no href return control to the beginning of loop
                 continue
 
             href = urljoin(self._url, href) #Join in case of relative paths!
@@ -71,15 +72,14 @@ class Spider:
 
 class Scraper(Spider):
 
-    def __init__(self, url, max_hops, config):
-        super().__init__(url, max_hops)
+    def __init__(self, config):
+        super().__init__(config["url"], config["max_hops"])
 
-        self.__config = self.__config_parser(config)
+        self.__config = config
         self.__links = self.getLinks()
         self.__results = set()
 
     def scrapeByElem(self):
-        buffer = []
         for link in self.__links:
             page = requests.get(link)
             soup = BeautifulSoup(page.content, "html.parser")
@@ -88,7 +88,6 @@ class Scraper(Spider):
                 self.__results.add(result)
 
     def scrapeBySelector(self):
-        buffer = []
         for link in self.__links:
             page = requests.get(link)
             soup = BeautifulSoup(page.content, "html.parser")
@@ -120,17 +119,15 @@ class Scraper(Spider):
     def getResults(self):
         return self.__results
 
-    def __config_parser(self, config_file):
-        file_extension = pathlib.Path('config_file').suffix
-
-        if file_extension == "yml" or file_extension == "yaml":
-            config = self.__parse_yaml(config_file=config_file)
-            return config
-        else:
-            raise ValueError
-
-    def __parse_yaml(self, config_file):
-        
+    def __str__(self):
+        return f"Scraper Object with URL: {self._url} and Hops: {self.hops} and Config:{self.__config}"
+    
+    def __repr__(self):
+        return f"Scraper(url={self._url}, max_hops={self.hops}, config={self.__config})"
+    
+def config_parser(config_file):
+    file_extension = pathlib.Path('config_file').suffix
+    if file_extension == "yml" or file_extension == "yaml":
         try:
             with open(config_file, 'r') as stream:
                 data = yaml.safe_load(stream)
@@ -138,17 +135,15 @@ class Scraper(Spider):
                 return data
         except yaml.YAMLError as e:
             raise e
-
-    def __str__(self):
-        return f"Scraper Object with URL: {self._url} and Hops: {self.hops} and Config:{self.__config}"
-    
-    def __repr__(self):
-        return f"Scraper(url={self._url}, max_hops={self.hops}, config={self.__config})"
-
+    else:
+        raise ValueError
 
 if __name__ == "__main__":
-    website_url = ""
-    Crawl = Spider(url=website_url)
-    Crawl.getLinks()
-    print(Crawl.showLinks())
-    
+    config_path = input("Specify config file (YAML) Path!")
+    if path.exists(config_path) == True:
+        config = config_parser(config_file=config_path)
+        scrape = Scraper(config=config)
+        scrape.getLinks()
+        print(scrape.showLinks())
+    else:
+        raise ValueError
