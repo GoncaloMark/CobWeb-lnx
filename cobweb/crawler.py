@@ -1,12 +1,9 @@
 import requests
 from urllib.parse import urlparse, urljoin
 from bs4 import BeautifulSoup
-import pathlib
 import yaml
 from os import path
-
-#self.__config = self.__config_parser(config_file=config_file)
-#, config_file
+import itertools
 
 class Spider:
     def __init__(self, url, max_hops = 10):
@@ -79,58 +76,73 @@ class Scraper(Spider):
         self.__config = config
         self.getLinks()
         self.__links = self.showLinks()
-        print(self.showLinks())
-        self.__results = set()
+        self.__cache = {}
 
-    def scrapeByElem(self):
-        for link in self.__links:
-            page = requests.get(link)
-            soup = BeautifulSoup(page.content, "html.parser")
-            for tag in self.__config["tags"]:
-                result = soup.find_all(tag)
-                for el in result:
-                    self.__results.add(el)
+        self._parsed = list(self.__get_html())
+        #self.__results = set()
 
-    def scrapeBySelector(self):
+    def __get_html(self):
         for link in self.__links:
-            page = requests.get(link)
-            soup = BeautifulSoup(page.content, "html.parser")
-            for selector in self.__config["selectors"]:
-                if selector == "id":
-                    for value in self.__config["IDvalue"]:
-                        result = soup.select("#"+value)
-                        for el in result:
-                            self.__results.add(el)
+            if link not in self.__cache:
+                page = requests.get(link)
+                soup = BeautifulSoup(page.content, "html.parser")
+                self.__cache[link] = soup
 
-    def scrapeByClassName(self):
-        for link in self.__links:
-            page = requests.get(link)
-            soup = BeautifulSoup(page.content, "html.parser")
-            for tag in self.__config["tags"]:
-                for clsName in self.__config["classes"]:
-                    result = soup.find_all(tag, class_=str(clsName))
-                    self.__results.add(result)
-                    for el in result:
-                        self.__results.add(el)
+            yield self.__cache[link]
 
-    def scrapeByAttr(self):
-        for link in self.__links:
-            page = requests.get(link)
-            soup = BeautifulSoup(page.content, "html.parser")
-            for tag in self.__config["tags"]:
-                for attrName in self.__config["attributes"]:
-                    for value in self.__config["attrV"]:
-                        result = soup.find_all(tag, attrs={attrName:value})
-                        self.__results.add(result)
-                        for el in result:
-                            self.__results.add(el)
+    def __scrapeByElem(self):
+        if len(self.__config["tags"]) == 0:
+            return
+        
+        for soup, tag in itertools.product(self._parsed, self.__config["tags"]):
+            result = soup.find_all(tag)
+            for el in result:
+                yield el
+
+    def __scrapeBySelector(self):
+        if len(self.__config["selectors"]) == 0:
+            return
+        result = []
+        for soup, selector in itertools.product(self._parsed, self.__config["selectors"]):
+            if selector == "id":
+                for value in self.__config["IDvalue"]:
+                    result.append(soup.select("#"+value))
+            result.append(soup.select(selector))
+            for el in result:
+                yield el
+
+    def __scrapeByClassName(self):
+        if len(self.__config["classes"]) == 0:
+            return
+        
+        for soup, tag, clsName in itertools.product(self._parsed, self.__config["tags"], self.__config["classes"]):
+            result = soup.find_all(tag, class_=str(clsName))
+
+            for el in result:
+                yield el
+
+    def __scrapeByAttr(self):
+        if len(self.__config["attributes"]) == 0:
+            return
+
+        for soup, tag, attrName, value in itertools.product(self._parsed, self.__config["tags"], self.__config["attributes"], self.__config["attrV"]):
+            result = soup.find_all(tag, attrs={attrName:value})
+
+            for el in result:
+                yield el
 
     def scrape(self):
-        #PARSE THE CONFIG AND CHOOSE WHAT SCRAPING METHODS TO CALL!
-        pass
-
-    def getResults(self):
-        return self.__results
+        for element in self.__scrapeByElem():
+            print(f"By element: {element}")
+        
+        for attr in self.__scrapeByAttr():
+            print(f"By Attribute: {attr}")
+            
+        for className in self.__scrapeByClassName():
+            print(f"By ClassName: {className}")
+            
+        for selector in self.__scrapeBySelector():
+            print(f"By Selector: {selector}")
 
     def __str__(self):
         return f"Scraper Object with URL: {self._url} and Hops: {self.hops} and Config:{self.__config}"
@@ -149,7 +161,7 @@ def config_parser(config_file):
 
 if __name__ == "__main__":
     
-    """ SCRAPER TEST! 
+    #SCRAPER TEST! 
     print("Specify config file (YAML) Path!")
     config_path = input()
     if path.exists(config_path) == True:
@@ -157,13 +169,12 @@ if __name__ == "__main__":
         scrape = Scraper(config=config)
         scrape.getLinks()
         #print(scrape.showLinks())
-        scrape.scrapeByElem()
-        print(scrape.getResults())
+        scrape.scrape()
         
 
     else:
         raise ValueError
-        """
+        
 
     """ 
     SPIDER TEST!
