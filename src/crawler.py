@@ -5,6 +5,7 @@ import yaml
 from os import path
 import itertools
 
+#TODO: ADD DOXYGEN
 class Spider:
     def __init__(self, url, max_hops = 10):
         #Spider initializes instance with an url and a config, the config for the spider will only tell if you want internal links, external links or both!
