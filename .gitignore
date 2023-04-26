@@ -1,1 +1,5 @@
 venv/
+.pypirc
+dist/
+build/
+CobWeb.egg-info
