@@ -73,18 +73,25 @@ class Scraper(Spider):
 
     def __init__(self, config):
         super().__init__(config["url"], config["hops"])
+        print(config["url"])
 
         self.__config = config
-        self.getLinks()
-        self.__links = self.showLinks()
+        if config["hops"] != 0:
+            self.getLinks()
+            self.__Ilinks = [config["url"], *self.showLinks()]
+        else:
+            self.__Ilinks = [config["url"]]
+        
         self.__cache = {}
+        print(self.__Ilinks)
 
-        self._parsed = list(self.__get_html())
+        self._parsed = [x for x in self.__get_html()]
         #self.__results = set()
 
     def __get_html(self):
-        for link in self.__links:
+        for link in self.__Ilinks:
             if link not in self.__cache:
+                print(link)
                 page = requests.get(link)
                 soup = BeautifulSoup(page.content, "html.parser")
                 self.__cache[link] = soup
@@ -97,6 +104,7 @@ class Scraper(Spider):
         
         for soup, tag in itertools.product(self._parsed, self.__config["tags"]):
             result = soup.find_all(tag)
+
             for el in result:
                 yield el
 
@@ -107,7 +115,7 @@ class Scraper(Spider):
         for soup, selector in itertools.product(self._parsed, self.__config["selectors"]):
             if selector == "id":
                 for value in self.__config["IDvalue"]:
-                    result.append(soup.select("#"+value))
+                    result.append(soup.select_one("#"+value))
             result.append(soup.select(selector))
             for el in result:
                 yield el
@@ -123,10 +131,10 @@ class Scraper(Spider):
                 yield el
 
     def __scrapeByAttr(self):
-        if len(self.__config["attributes"]) == 0:
+        if len(self.__config["attrs"]) == 0:
             return
 
-        for soup, tag, attrName, value in itertools.product(self._parsed, self.__config["tags"], self.__config["attributes"], self.__config["attrV"]):
+        for soup, tag, attrName, value in itertools.product(self._parsed, self.__config["tags"], self.__config["attrs"], self.__config["attrV"]):
             result = soup.find_all(tag, attrs={attrName:value})
 
             for el in result:
