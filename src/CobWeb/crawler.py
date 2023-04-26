@@ -133,6 +133,7 @@ class Scraper(Spider):
             config (dict): A dictionary containing the configuration parameters for the scraper.
 
         """
+
         if config.get("hops") is None:
             config["hops"] = 0
 
@@ -254,16 +255,16 @@ class Scraper(Spider):
 
         """
         async with aiohttp.ClientSession() as session:
-            if config["hops"] != 0:
+            if self.__config["hops"] != 0:
                 await self.getLinks(session)
                 links = self.showLinks()
                 if type(links) == tuple:
                     internal, external = links
-                    self.__Ilinks = [config["url"], *internal, *external]
+                    self.__Ilinks = [self.__config["url"], *internal, *external]
                 else:
-                    self.__Ilinks = [config["url"], *links]
+                    self.__Ilinks = [self.__config["url"], *links]
             else:
-                self.__Ilinks = [config["url"]]
+                self.__Ilinks = [self.__config["url"]]
             tasks = []
             for link in self.__Ilinks:
                 tasks.append(
@@ -315,18 +316,18 @@ def config_parser(config_file):
 if __name__ == "__main__":
     
     #SCRAPER TEST WITH FILE! 
-    print("Specify config file (YAML) Path!")
+    """ print("Specify config file (YAML) Path!")
     config_path = input()
     if path.exists(config_path) != True:
-        raise ValueError
+        raise ValueError """
     
     #SCRAPER TEST WITH CONFIG OBJECT! 
-    """ config = {
-            "url": "url",
+    config = {
+            "url": "https://stackoverflow.com/",
             "tags": ["h1", "p"]
-        } """
+        } 
 
-    config = config_parser(config_file=config_path)
+    #config = config_parser(config_file=config_path)
     scrape = Scraper(config=config)
     #scrape.getLinks()
     #print(scrape.showLinks())
