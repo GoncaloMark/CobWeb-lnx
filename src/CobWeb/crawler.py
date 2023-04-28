@@ -13,9 +13,8 @@ from os import path
 import itertools
 import asyncio
 import aiohttp
-import threading
-import concurrent.futures
-import multiprocessing
+import timeit
+
 
 ## This class defines a web crawler that can identify internal and external links on a given website.
 
@@ -58,7 +57,7 @@ class Spider:
         page.raise_for_status()
         domain_name = urlparse(self._url).netloc
         html = await page.text()
-        soup = BeautifulSoup(html, "html.parser")
+        soup = BeautifulSoup(html, "lxml")
         #TODO: throw netwrok errors like 403 forbidden
 
         # Loop over all <a> tags and get their href attributes.
@@ -143,10 +142,6 @@ class Scraper(Spider):
         self.__Ilinks = []
         self.__cache = {}
 
-        self._parsed = []
-
-        self.__executor = concurrent.futures.ThreadPoolExecutor(max_workers=multiprocessing.cpu_count())
-
     async def __get_html(self, link, session = aiohttp.ClientSession):
         """
         A private method to download and parse the HTML from the URLs in the Spider object.
@@ -159,24 +154,21 @@ class Scraper(Spider):
             page = await session.request("GET", link)
             page.raise_for_status()
             html = await page.text()
-            future = self.__executor.submit(self.__soup_work, link, html)
-            return future.result()
-
-    
-    def __soup_work(self, link, html):
-        lock = threading.Lock()
-        soup = BeautifulSoup(html, "html.parser")
-
-        with lock:
+            soup = BeautifulSoup(html, "lxml")
             self.__cache[link] = soup
-
-        return self.__cache[link]
-    
+            return self.__cache[link]
+            
     async def __parse(self, link, session = aiohttp.ClientSession):
         html = await self.__get_html(link, session)
-        self._parsed.append(html)
+        scrape_list = [[x for x in self.__scrapeByElem(html)], [x for x in self.__scrapeByAttr(html)], [x for x in self.__scrapeByClassName(html)], [x for x in self.__scrapeBySelector(html)]]
+        return (link, {
+            "By_Element": scrape_list[0],
+            "By_Attribute": scrape_list[1],
+            "By_Class": scrape_list[2],
+            "By_Selector": scrape_list[3]
+        })
 
-    def __scrapeByElem(self):
+    def __scrapeByElem(self, html):
         """
         A private method to scrape elements from the HTML using element tags.
 
@@ -187,13 +179,13 @@ class Scraper(Spider):
         if self.__config.get("tags") is None or len(self.__config["tags"]) == 0:
             return
         
-        for soup, tag in itertools.product(self._parsed, self.__config["tags"]):
-            result = soup.find_all(tag)
+        for tag in self.__config["tags"]:
+            result = html.find_all(tag)
 
             for el in result:
                 yield el
 
-    def __scrapeBySelector(self):
+    def __scrapeBySelector(self, html):
         """
         A private method to scrape elements from the HTML using CSS selectors.
 
@@ -204,15 +196,15 @@ class Scraper(Spider):
         if self.__config.get("selectors") is None or len(self.__config["selectors"]) == 0:
             return
         result = []
-        for soup, selector in itertools.product(self._parsed, self.__config["selectors"]):
+        for selector in self.__config["selectors"]:
             if selector == "id":
                 for value in self.__config["IDvalue"]:
-                    result.append(soup.select_one("#"+value))
-            result.append(soup.select(selector))
+                    result.append(html.select_one("#"+value))
+            result.append(html.select(selector))
             for el in result:
                 yield el
 
-    def __scrapeByClassName(self):
+    def __scrapeByClassName(self, html):
         """
         A private method to scrape elements from the HTML using class names.
 
@@ -223,13 +215,13 @@ class Scraper(Spider):
         if self.__config.get("classes") is None or len(self.__config["classes"]) == 0:
             return
         
-        for soup, tag, clsName in itertools.product(self._parsed, self.__config["tags"], self.__config["classes"]):
-            result = soup.find_all(tag, class_=str(clsName))
+        for tag, clsName in itertools.product(self.__config["tags"], self.__config["classes"]):
+            result = html.find_all(tag, class_=str(clsName))
 
             for el in result:
                 yield el
 
-    def __scrapeByAttr(self):
+    def __scrapeByAttr(self, html):
         """
         A private method to scrape elements from the HTML using attributes.
 
@@ -240,8 +232,8 @@ class Scraper(Spider):
         if self.__config.get("attrs") is None or len(self.__config["attrs"]) == 0:
             return
 
-        for soup, tag, attrName, value in itertools.product(self._parsed, self.__config["tags"], self.__config["attrs"], self.__config["attrV"]):
-            result = soup.find_all(tag, attrs={attrName:value})
+        for tag, attrName, value in itertools.product(self.__config["tags"], self.__config["attrs"], self.__config["attrV"]):
+            result = html.find_all(tag, attrs={attrName:value})
 
             for el in result:
                 yield el
@@ -270,14 +262,9 @@ class Scraper(Spider):
                 tasks.append(
                     self.__parse(link, session=session)
                 )
-            await asyncio.gather(*tasks)
-            scrape_list = [[x for x in self.__scrapeByElem()], [x for x in self.__scrapeByAttr()], [x for x in self.__scrapeByClassName()], [x for x in self.__scrapeBySelector()]]
-            return {
-                "By_Element": scrape_list[0],
-                "By_Attribute": scrape_list[1],
-                "By_Class": scrape_list[2],
-                "By_Selector": scrape_list[3]
-            }
+            result = [await asyncio.gather(*tasks)]
+            return result
+            
         
     def run(self):
         result = asyncio.run(self.__scrape())
@@ -323,16 +310,20 @@ if __name__ == "__main__":
     
     #SCRAPER TEST WITH CONFIG OBJECT! 
     config = {
-            "url": "https://stackoverflow.com/",
-            "tags": ["h1", "p"]
+            "url": "http://quotes.toscrape.com/",
+            "tags": ["small", "h3"],
+            "hops": 1000
         } 
 
     #config = config_parser(config_file=config_path)
     scrape = Scraper(config=config)
     #scrape.getLinks()
     #print(scrape.showLinks())
-    result = scrape.run()
-    print(result)
+    #result = scrape.run()
+    #print(result)
+    time = timeit.timeit(scrape.run, number=1)
+    print(time)
+    
     """ 
     SPIDER TEST!
     crawl = Spider("url", 10)
