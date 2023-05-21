@@ -52,7 +52,7 @@ class Spider:
         return bool(parsed.netloc) and bool(parsed.scheme)
 
     ## Crawls the website and identifies internal and external links.
-    async def getLinks(self, session = aiohttp.ClientSession):
+    async def _getLinks(self, session = aiohttp.ClientSession):
         page = await session.request("GET", self._url)
         page.raise_for_status()
         domain_name = urlparse(self._url).netloc
@@ -93,13 +93,25 @@ class Spider:
     """Returns the set of internal and external URLs found during crawling.
     @returns A tuple containing the set of internal URLs and the set of external URLs, or just the set of internal URLs or external URLs if one of them is empty.
     """
-    def showLinks(self):
+    def _showLinks(self):
         if self._internal_urls and self._external_urls:
             return (self._internal_urls, self._external_urls)
         elif self._internal_urls:
             return self._internal_urls
         elif self._external_urls:
             return self._external_urls
+        
+    """Crawls the requested website with the specifiend number of hops"""
+    async def __crawl(self):
+        async with aiohttp.ClientSession() as session:
+            if self.hops != 0:
+                await self._getLinks(session)
+    
+    """Runs the event loop and returns the urls found in the page!"""
+    def run(self):
+        asyncio.run(self.__crawl())
+        return self._showLinks()
+
 
     def __str__(self):
         """
@@ -248,8 +260,8 @@ class Scraper(Spider):
         """
         async with aiohttp.ClientSession() as session:
             if self.__config["hops"] != 0:
-                await self.getLinks(session)
-                links = self.showLinks()
+                await self._getLinks(session)
+                links = self._showLinks()
                 if type(links) == tuple:
                     internal, external = links
                     self.__Ilinks = [self.__config["url"], *internal, *external]
@@ -309,23 +321,23 @@ if __name__ == "__main__":
         raise ValueError """
     
     #SCRAPER TEST WITH CONFIG OBJECT! 
-    config = {
+    """ config = {
             "url": "http://quotes.toscrape.com/",
             "tags": ["small", "h3"],
             "hops": 1000
-        } 
+        }  """
 
     #config = config_parser(config_file=config_path)
-    scrape = Scraper(config=config)
-    #scrape.getLinks()
-    #print(scrape.showLinks())
+    #scrape = Scraper(config=config)
+    #scrape._getLinks()
+    #print(scrape._showLinks())
     #result = scrape.run()
     #print(result)
-    time = timeit.timeit(scrape.run, number=1)
-    print(time)
+    #time = timeit.timeit(scrape.run, number=1)
+    #print(time)
     
-    """ 
-    SPIDER TEST!
-    crawl = Spider("url", 10)
-    crawl.getLinks()
-    print(crawl.showLinks()) """
+    # SPIDER TEST!
+    spider = Spider("https://example.com", max_hops=10)
+    # Get the internal and external links
+    links = spider.run()
+    print(links)
