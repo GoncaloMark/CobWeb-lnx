@@ -21,7 +21,7 @@ attrs==22.2.0
     #   jsonschema
 beautifulsoup4==4.11.2
     # via -r requirements.in
-certifi==2022.12.7
+certifi==2023.7.22
     # via -r requirements.in
 charset-normalizer==3.0.1
     # via
