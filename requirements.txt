@@ -4,16 +4,14 @@
 #
 #    pip-compile requirements.in
 #
-aiohttp==3.8.5
+aiohttp==3.9.0
     # via -r requirements.in
 aiosignal==1.3.1
     # via
     #   -r requirements.in
     #   aiohttp
 async-timeout==4.0.2
-    # via
-    #   -r requirements.in
-    #   aiohttp
+    # via -r requirements.in
 attrs==22.2.0
     # via
     #   -r requirements.in
@@ -24,9 +22,7 @@ beautifulsoup4==4.11.2
 certifi==2023.7.22
     # via -r requirements.in
 charset-normalizer==3.0.1
-    # via
-    #   -r requirements.in
-    #   aiohttp
+    # via -r requirements.in
 frozenlist==1.3.3
     # via
     #   -r requirements.in
